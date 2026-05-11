@@ -285,18 +285,21 @@ def jumpscore_process_results(doc: Dict[str, Any], results: List[str]) -> Dict[s
             confidences=None,
         )
 
+    result = {
+        "question_id": doc["id"],
+        "map": map_value,
+        "ap_per_tolerance": map_details["ap_per_tolerance"],
+        "pred_starts": pred_starts,
+        "gt_starts": gt_starts,
+        "num_pred": map_details["num_pred"],
+        "num_gt": map_details["num_gt"],
+        "pred_raw": pred_answer_raw[:200] if pred_answer_raw else "",
+        "gt_raw": gt_answer_raw[:200] if gt_answer_raw else "",
+    }
+
     return {
-        "jumpscore_score": {
-            "question_id": doc["id"],
-            "map": map_value,
-            "ap_per_tolerance": map_details["ap_per_tolerance"],
-            "pred_starts": pred_starts,
-            "gt_starts": gt_starts,
-            "num_pred": map_details["num_pred"],
-            "num_gt": map_details["num_gt"],
-            "pred_raw": pred_answer_raw[:200] if pred_answer_raw else "",
-            "gt_raw": gt_answer_raw[:200] if gt_answer_raw else "",
-        }
+        "jumpscore_map": result,
+        "jumpscore_score": result.copy(),
     }
 
 
