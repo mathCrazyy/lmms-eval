@@ -2,46 +2,24 @@ import json
 import os
 import re
 from collections import defaultdict
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
-from huggingface_hub import snapshot_download
 from loguru import logger as eval_logger
 
 
-def _load_dataset_path() -> str:
-    """Load the JumpScore dataset repo from the adjacent task YAML."""
-    yaml_path = Path(__file__).parent / "jumpscore.yaml"
-    with open(yaml_path, "r") as f:
-        safe_lines = [line for line in f if "!function" not in line]
-    config = yaml.safe_load("".join(safe_lines))
-    return str(config["dataset_path"])
-
-
-_JUMPSCORE_CACHE_DIR: Optional[str] = None
-
-
-def _get_cache_dir() -> str:
-    """Return the local HF snapshot directory, downloading on first call."""
-    global _JUMPSCORE_CACHE_DIR
-    if _JUMPSCORE_CACHE_DIR is None:
-        _JUMPSCORE_CACHE_DIR = snapshot_download(
-            repo_id=_load_dataset_path(),
-            repo_type="dataset",
-            local_dir_use_symlinks=False,
-        )
-    return _JUMPSCORE_CACHE_DIR
-
-
-def jumpscore_doc_to_visual(doc: Dict[str, Any]) -> List[str]:
+def jumpscore_doc_to_visual(doc: Dict[str, Any], lmms_eval_specific_kwargs: Optional[Dict[str, Any]] = None) -> List[str]:
     """Return the local video path for a JumpScore sample."""
+    if lmms_eval_specific_kwargs is None:
+        lmms_eval_specific_kwargs = {}
+
     video_ref = str(doc["video_path"])
 
     if os.path.isabs(video_ref):
         video_path = video_ref
     else:
-        cache_dir = _get_cache_dir()
+        hf_home = os.path.expanduser(os.getenv("HF_HOME", "~/.cache/huggingface/"))
+        video_cache_dir = lmms_eval_specific_kwargs.get("video_cache_dir", "jumpscore")
+        cache_dir = os.path.join(hf_home, video_cache_dir)
         candidates = [
             os.path.join(cache_dir, video_ref),
             os.path.join(cache_dir, "videos", video_ref),
@@ -74,7 +52,7 @@ def jumpscore_doc_to_messages(doc: Dict[str, Any], lmms_eval_specific_kwargs: Op
     if lmms_eval_specific_kwargs is None:
         lmms_eval_specific_kwargs = {}
 
-    video_path = jumpscore_doc_to_visual(doc)[0]
+    video_path = jumpscore_doc_to_visual(doc, lmms_eval_specific_kwargs)[0]
     count_question = str(doc.get("count_question", "")).replace("<image>", "").strip()
     count_question = re.sub(r"\n+", "\n", count_question).strip()
     count_answer = str(doc.get("count_answer", "")).strip()
