@@ -19,11 +19,19 @@ def _load_dataset_path() -> str:
     return str(config["dataset_path"])
 
 
-_JUMPSCORE_CACHE_DIR = snapshot_download(
-    repo_id=_load_dataset_path(),
-    repo_type="dataset",
-    local_dir_use_symlinks=False,
-)
+_JUMPSCORE_CACHE_DIR: Optional[str] = None
+
+
+def _get_cache_dir() -> str:
+    """Return the local HF snapshot directory, downloading on first call."""
+    global _JUMPSCORE_CACHE_DIR
+    if _JUMPSCORE_CACHE_DIR is None:
+        _JUMPSCORE_CACHE_DIR = snapshot_download(
+            repo_id=_load_dataset_path(),
+            repo_type="dataset",
+            local_dir_use_symlinks=False,
+        )
+    return _JUMPSCORE_CACHE_DIR
 
 
 def jumpscore_doc_to_visual(doc: Dict[str, Any]) -> List[str]:
@@ -33,9 +41,10 @@ def jumpscore_doc_to_visual(doc: Dict[str, Any]) -> List[str]:
     if os.path.isabs(video_ref):
         video_path = video_ref
     else:
+        cache_dir = _get_cache_dir()
         candidates = [
-            os.path.join(_JUMPSCORE_CACHE_DIR, video_ref),
-            os.path.join(_JUMPSCORE_CACHE_DIR, "videos", video_ref),
+            os.path.join(cache_dir, video_ref),
+            os.path.join(cache_dir, "videos", video_ref),
         ]
         video_path = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
