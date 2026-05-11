@@ -30,15 +30,11 @@ with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
 API_TYPE = os.getenv("API_TYPE", "openai")
 MODEL_VERSION = os.getenv("MODEL_VERSION", "gpt-4o-2024-11-20")
 
-_server = None
-
-
-def _get_judge_server():
-    global _server
-    if _server is None:
-        server_config = ServerConfig(model_name=MODEL_VERSION)
-        _server = get_server(server_name=API_TYPE, config=server_config)
-    return _server
+# Initialize the judge server
+server_config = ServerConfig(
+    model_name=MODEL_VERSION,
+)
+server = get_server(server_name=API_TYPE, config=server_config)
 
 
 def replace_images_tokens(input_string):
@@ -192,7 +188,7 @@ def mmmu_reasoning_process_results(doc, results):
 
         try:
             # Use the llm_judge API for binary evaluation
-            result = _get_judge_server().evaluate_binary(question=formatted_question, answer=str(answer), prediction=pred, output_format="0/1")
+            result = server.evaluate_binary(question=formatted_question, answer=str(answer), prediction=pred, output_format="0/1")
 
             # Parse the result
             if result["success"]:
