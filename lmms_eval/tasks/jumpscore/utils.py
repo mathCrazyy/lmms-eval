@@ -24,6 +24,16 @@ def jumpscore_doc_to_visual(doc: Dict[str, Any], lmms_eval_specific_kwargs: Opti
             os.path.join(cache_dir, video_ref),
             os.path.join(cache_dir, "videos", video_ref),
         ]
+        snapshot_root = os.path.join(hf_home, "hub", "datasets--lmms-lab-encoder--JumpScore", "snapshots")
+        if os.path.isdir(snapshot_root):
+            for snapshot in os.listdir(snapshot_root):
+                snapshot_dir = os.path.join(snapshot_root, snapshot)
+                candidates.extend(
+                    [
+                        os.path.join(snapshot_dir, video_ref),
+                        os.path.join(snapshot_dir, "videos", video_ref),
+                    ]
+                )
         video_path = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
     if not os.path.exists(video_path):
@@ -48,14 +58,11 @@ def jumpscore_doc_to_target(doc: Dict[str, Any]) -> str:
 
 
 def jumpscore_doc_to_messages(doc: Dict[str, Any], lmms_eval_specific_kwargs: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    """Build the multi-turn JumpScore conversation used during evaluation."""
+    """Build the single-turn JumpScore conversation used during evaluation."""
     if lmms_eval_specific_kwargs is None:
         lmms_eval_specific_kwargs = {}
 
     video_path = jumpscore_doc_to_visual(doc, lmms_eval_specific_kwargs)[0]
-    count_question = str(doc.get("count_question", "")).replace("<image>", "").strip()
-    count_question = re.sub(r"\n+", "\n", count_question).strip()
-    count_answer = str(doc.get("count_answer", "")).strip()
     timestamps_question = jumpscore_doc_to_text(doc, lmms_eval_specific_kwargs)
 
     return [
@@ -63,11 +70,9 @@ def jumpscore_doc_to_messages(doc: Dict[str, Any], lmms_eval_specific_kwargs: Op
             "role": "user",
             "content": [
                 {"type": "video", "url": video_path},
-                {"type": "text", "text": count_question},
+                {"type": "text", "text": timestamps_question},
             ],
         },
-        {"role": "assistant", "content": [{"type": "text", "text": count_answer}]},
-        {"role": "user", "content": [{"type": "text", "text": timestamps_question}]},
     ]
 
 
