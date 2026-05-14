@@ -24,16 +24,6 @@ def jumpscore_doc_to_visual(doc: Dict[str, Any], lmms_eval_specific_kwargs: Opti
             os.path.join(cache_dir, video_ref),
             os.path.join(cache_dir, "videos", video_ref),
         ]
-        snapshot_root = os.path.join(hf_home, "hub", "datasets--lmms-lab-encoder--JumpScore", "snapshots")
-        if os.path.isdir(snapshot_root):
-            for snapshot in os.listdir(snapshot_root):
-                snapshot_dir = os.path.join(snapshot_root, snapshot)
-                candidates.extend(
-                    [
-                        os.path.join(snapshot_dir, video_ref),
-                        os.path.join(snapshot_dir, "videos", video_ref),
-                    ]
-                )
         video_path = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
     if not os.path.exists(video_path):
