@@ -1,10 +1,51 @@
 import json
 import os
 import re
+import zipfile
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import yaml
+from huggingface_hub import snapshot_download
 from loguru import logger as eval_logger
+
+
+_JUMPSCORE_VIDEOS_READY = False
+
+
+def _load_dataset_path() -> str:
+    """Load the JumpScore dataset repo from the adjacent task YAML."""
+    with open(Path(__file__).parent / "jumpscore.yaml", "r") as f:
+        safe_lines = [line for line in f if "!function" not in line]
+    return str(yaml.safe_load("".join(safe_lines))["dataset_path"])
+
+
+def _ensure_jumpscore_videos(cache_dir: str) -> None:
+    """Download and extract JumpScore videos when the local cache is not prepared."""
+    global _JUMPSCORE_VIDEOS_READY
+    if _JUMPSCORE_VIDEOS_READY:
+        return
+
+    videos_dir = os.path.join(cache_dir, "videos")
+    if os.path.isdir(videos_dir) and os.listdir(videos_dir):
+        _JUMPSCORE_VIDEOS_READY = True
+        return
+
+    repo_dir = snapshot_download(repo_id=_load_dataset_path(), repo_type="dataset", allow_patterns=["*.zip"])
+    zip_paths = [os.path.join(repo_dir, name) for name in os.listdir(repo_dir) if name.endswith(".zip")]
+    if not zip_paths:
+        eval_logger.warning(f"JumpScore video zip not found in {repo_dir}; expected videos under {videos_dir}.")
+        _JUMPSCORE_VIDEOS_READY = True
+        return
+
+    os.makedirs(cache_dir, exist_ok=True)
+    for zip_path in sorted(zip_paths):
+        eval_logger.info(f"Extracting JumpScore videos from {zip_path} to {cache_dir}")
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(cache_dir)
+
+    _JUMPSCORE_VIDEOS_READY = True
 
 
 def jumpscore_doc_to_visual(doc: Dict[str, Any], lmms_eval_specific_kwargs: Optional[Dict[str, Any]] = None) -> List[str]:
@@ -24,6 +65,8 @@ def jumpscore_doc_to_visual(doc: Dict[str, Any], lmms_eval_specific_kwargs: Opti
             os.path.join(cache_dir, video_ref),
             os.path.join(cache_dir, "videos", video_ref),
         ]
+        if not any(os.path.exists(path) for path in candidates):
+            _ensure_jumpscore_videos(cache_dir)
         video_path = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
     if not os.path.exists(video_path):
