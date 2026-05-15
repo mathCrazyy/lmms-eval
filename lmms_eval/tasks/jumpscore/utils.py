@@ -10,7 +10,6 @@ import yaml
 from huggingface_hub import snapshot_download
 from loguru import logger as eval_logger
 
-
 _JUMPSCORE_VIDEOS_READY = False
 
 
